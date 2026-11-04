@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html><head><meta charset="utf-8">
+<style>
+:root{--bg:#f7f9fc;--ink:#1d2433;--line:#d9e0ea;--grid:#e6ebf2;--grid2:#cbd4e1;--accent:#2f6fed}
+@media (prefers-color-scheme: dark){:root{--bg:#161a23;--ink:#e6eaf2;--line:#2b3242;--grid:#202636;--grid2:#2f374a;--accent:#6ea0ff}}
+html,body{margin:0;background:transparent;font-family:system-ui,sans-serif;color:var(--ink)}
+#bar{display:flex;gap:6px;flex-wrap:wrap;align-items:center;padding:4px 0 8px}
+button,select{border:1px solid var(--line);background:var(--bg);color:var(--ink);border-radius:8px;padding:5px 11px;cursor:pointer;font-size:13px}
+button.on{background:var(--accent);color:#fff;border-color:var(--accent)}
+#wrap{border:1px solid var(--line);border-radius:12px;overflow:hidden;background:var(--bg)}
+canvas{display:block;width:100%;height:auto;cursor:crosshair}
+#hint{font-size:12px;opacity:.8;padding:6px 2px}
+
+[data-tip]{position:relative}
+[data-tip]:hover::after{content:attr(data-tip);position:absolute;left:0;top:calc(100% + 6px);z-index:50;width:260px;white-space:normal;text-align:left;
+  background:#1d2433;color:#fff;font-size:12px;line-height:1.35;padding:8px 10px;border-radius:8px;box-shadow:0 4px 14px rgba(0,0,0,.3);pointer-events:none}
+.tipl{font-size:13px;display:inline-flex;align-items:center;gap:5px;cursor:help}
+.q{display:inline-block;width:16px;height:16px;border-radius:50%;border:1px solid var(--line);text-align:center;font-size:11px;line-height:16px;opacity:.8}
+</style></head>
+<body>
+<div id="bar">
+  <button id="bUndo" data-tip="Undo the last change (adding, moving or deleting a corner, or placing the entrance).">↶ Undo</button>
+  <button id="bClear" data-tip="Remove all corners and the entrance so you can start a new outline.">🗑 Clear</button>
+  <button id="bOrtho" class="on" data-tip="ON: new corners snap to a right angle with the previous corner (walls stay straight, horizontal or vertical). Turn OFF to draw slanted walls.">⊞ Right angles</button>
+  <button id="bDoor" data-tip="Press this, then click on a wall to place the front door (entrance). Press it again to go back to drawing corners.">🚪 Place entrance</button>
+  <label class="tipl" data-tip="Grid snap: corners jump to the nearest grid step so lengths stay tidy. 0.5 m means every corner lands on a multiple of half a metre. Use 0.25 m for finer control, 1 m for coarse sketches.">Grid snap
+    <select id="sSnap"><option value="0.25">0.25 m</option><option value="0.5" selected>0.5 m</option><option value="1">1 m</option></select> <span class="q">?</span></label>
+</div>
+<div id="wrap"><canvas id="c"></canvas></div>
+<div id="hint"></div>
+<script>
+const W = 760, H = 480, DPR = window.devicePixelRatio || 1;
+const cv = document.getElementById("c"), ctx = cv.getContext("2d"); cv.width = W * DPR; cv.height = H * DPR;
+const S = {pts: [], door: null, ext: [24, 16], ver: null, ortho: true, snap: 0.5, mode: "draw", drag: -1, hover: -1, hist: []};
+const MARGIN = 30;
+const css = n => getComputedStyle(document.documentElement).getPropertyValue(n).trim() || "#888";
+const sc = () => Math.min((W - 2 * MARGIN) / S.ext[0], (H - 2 * MARGIN) / S.ext[1]);
+const w2s = p => [MARGIN + p[0] * sc(), MARGIN + p[1] * sc()];
+const s2w = (x, y) => [(x - MARGIN) / sc(), (y - MARGIN) / sc()];
+const snapW = p => [Math.min(S.ext[0], Math.max(0, Math.round(p[0] / S.snap) * S.snap)), Math.min(S.ext[1], Math.max(0, Math.round(p[1] / S.snap) * S.snap))];
+const send = (type, extra) => window.parent.postMessage(Object.assign({isStreamlitMessage: true, type}, extra || {}), "*");
+const area = P => Math.abs(P.reduce((s, p, i) => { const q = P[(i + 1) % P.length]; return s + p[0] * q[1] - q[0] * p[1]; }, 0)) / 2;
+const perim = P => P.reduce((s, p, i) => { const q = P[(i + 1) % P.length]; return s + Math.hypot(q[0] - p[0], q[1] - p[1]); }, 0);
+
+function segNearest(p, a, b) {                       // nearest point on segment ab to p (world units)
+  const dx = b[0] - a[0], dy = b[1] - a[1], L2 = dx * dx + dy * dy || 1e-9;
+  const t = Math.max(0, Math.min(1, ((p[0] - a[0]) * dx + (p[1] - a[1]) * dy) / L2));
+  const q = [a[0] + t * dx, a[1] + t * dy]; return {q, d: Math.hypot(p[0] - q[0], p[1] - q[1])};
+}
+function nearestEdge(w) {
+  let best = {i: -1, d: 1e9, q: null}; const n = S.pts.length;
+  for (let i = 0; i < n; i++) { const r = segNearest(w, S.pts[i], S.pts[(i + 1) % n]); if (r.d < best.d) best = {i, d: r.d, q: r.q}; }
+  return best;
+}
+function hit(x, y) {
+  for (let i = S.pts.length - 1; i >= 0; i--) { const s = w2s(S.pts[i]); if (Math.hypot(s[0] - x, s[1] - y) < 11) return i; }
+  return -1;
+}
+function pushHist() { S.hist.push(JSON.stringify([S.pts, S.door])); if (S.hist.length > 60) S.hist.shift(); }
+function commit() {
+  draw();
+  send("streamlit:setComponentValue", {value: {points: S.pts.map(p => p.map(v => +v.toFixed(3))), door: S.door ? S.door.map(v => +v.toFixed(3)) : null}, dataType: "json"});
+}
+
+function draw() {
+  ctx.setTransform(DPR, 0, 0, DPR, 0, 0); ctx.clearRect(0, 0, W, H);
+  const k = sc(); ctx.font = "11px system-ui"; ctx.textBaseline = "middle";
+  for (let x = 0; x <= S.ext[0] + 1e-6; x++) { ctx.strokeStyle = x % 5 ? css("--grid") : css("--grid2"); ctx.beginPath(); ctx.moveTo(MARGIN + x * k, MARGIN); ctx.lineTo(MARGIN + x * k, MARGIN + S.ext[1] * k); ctx.stroke(); if (x % 5 === 0) { ctx.fillStyle = css("--ink"); ctx.globalAlpha = .55; ctx.fillText(x + " m", MARGIN + x * k - 8, MARGIN - 12); ctx.globalAlpha = 1; } }
+  for (let y = 0; y <= S.ext[1] + 1e-6; y++) { ctx.strokeStyle = y % 5 ? css("--grid") : css("--grid2"); ctx.beginPath(); ctx.moveTo(MARGIN, MARGIN + y * k); ctx.lineTo(MARGIN + S.ext[0] * k, MARGIN + y * k); ctx.stroke(); if (y % 5 === 0 && y) { ctx.fillStyle = css("--ink"); ctx.globalAlpha = .55; ctx.fillText(y + "", 6, MARGIN + y * k); ctx.globalAlpha = 1; } }
+  const P = S.pts.map(w2s), n = P.length;
+  if (n >= 2) {
+    ctx.beginPath(); P.forEach((p, i) => i ? ctx.lineTo(p[0], p[1]) : ctx.moveTo(p[0], p[1]));
+    if (n >= 3) { ctx.closePath(); ctx.fillStyle = "rgba(47,111,237,.13)"; ctx.fill(); }
+    ctx.strokeStyle = css("--accent"); ctx.lineWidth = 2.6; ctx.stroke(); ctx.lineWidth = 1;
+    for (let i = 0; i < (n >= 3 ? n : n - 1); i++) {                       // edge length labels
+      const a = S.pts[i], b = S.pts[(i + 1) % n], m = [(P[i][0] + P[(i + 1) % n][0]) / 2, (P[i][1] + P[(i + 1) % n][1]) / 2];
+      const t = Math.hypot(b[0] - a[0], b[1] - a[1]).toFixed(1) + " m", tw = ctx.measureText(t).width + 8;
+      ctx.fillStyle = css("--bg"); ctx.globalAlpha = .88; ctx.fillRect(m[0] - tw / 2, m[1] - 8, tw, 16); ctx.globalAlpha = 1;
+      ctx.fillStyle = css("--ink"); ctx.fillText(t, m[0] - tw / 2 + 4, m[1]);
+    }
+  }
+  P.forEach((p, i) => { ctx.beginPath(); ctx.arc(p[0], p[1], i === S.hover || i === S.drag ? 8 : 6, 0, 7); ctx.fillStyle = i === 0 ? css("--accent") : "#fff"; ctx.fill(); ctx.strokeStyle = css("--accent"); ctx.lineWidth = 2; ctx.stroke(); ctx.lineWidth = 1; });
+  if (S.door) { const d = w2s(S.door); ctx.fillStyle = "#a63603"; ctx.fillRect(d[0] - 8, d[1] - 8, 16, 16); ctx.fillStyle = css("--ink"); ctx.fillText("Entrance", d[0] + 12, d[1] - 12); }
+  const hint = document.getElementById("hint");
+  hint.textContent = (n >= 3 ? `Area ${area(S.pts).toFixed(1)} m²  ·  perimeter ${perim(S.pts).toFixed(1)} m  ·  ${n} corners   |   ` : "Click to add corners.   |   ") +
+    "click = add corner (or insert on an edge) · drag = move · right-click = delete · 🚪 = place entrance";
+  fit();
+}
+function fit() { send("streamlit:setFrameHeight", {height: document.documentElement.scrollHeight + 4}); }
+const pos = e => { const r = cv.getBoundingClientRect(); return [(e.clientX - r.left) * W / r.width, (e.clientY - r.top) * H / r.height]; };
+
+cv.addEventListener("mousedown", e => {
+  if (e.button !== 0) return; const [x, y] = pos(e), w = s2w(x, y);
+  if (S.mode === "door") { if (S.pts.length < 3) return; pushHist(); S.door = nearestEdge(w).q; commit(); return; }
+  const h = hit(x, y); if (h >= 0) { pushHist(); S.drag = h; return; }
+  pushHist(); let p = snapW(w);
+  if (S.pts.length >= 3) { const ne = nearestEdge(w); if (ne.d * sc() < 9) { S.pts.splice(ne.i + 1, 0, snapW(ne.q)); commit(); return; } }
+  if (S.ortho && S.pts.length) { const l = S.pts[S.pts.length - 1]; if (Math.abs(p[0] - l[0]) < Math.abs(p[1] - l[1])) p[0] = l[0]; else p[1] = l[1]; }
+  S.pts.push(p); commit();
+});
+cv.addEventListener("mousemove", e => {
+  const [x, y] = pos(e);
+  if (S.drag >= 0) { S.pts[S.drag] = snapW(s2w(x, y)); draw(); return; }
+  const h = hit(x, y); if (h !== S.hover) { S.hover = h; draw(); }
+});
+const release = () => { if (S.drag >= 0) { S.drag = -1; commit(); } };
+cv.addEventListener("mouseup", release); cv.addEventListener("mouseleave", release);
+cv.addEventListener("contextmenu", e => { e.preventDefault(); const [x, y] = pos(e), h = hit(x, y); if (h >= 0) { pushHist(); S.pts.splice(h, 1); commit(); } });
+document.getElementById("bUndo").onclick = () => { if (!S.hist.length) return; [S.pts, S.door] = JSON.parse(S.hist.pop()); commit(); };
+document.getElementById("bClear").onclick = () => { pushHist(); S.pts = []; S.door = null; commit(); };
+document.getElementById("bOrtho").onclick = e => { S.ortho = !S.ortho; e.target.classList.toggle("on", S.ortho); };
+document.getElementById("bDoor").onclick = e => { S.mode = S.mode === "door" ? "draw" : "door"; e.target.classList.toggle("on", S.mode === "door"); cv.style.cursor = S.mode === "door" ? "copy" : "crosshair"; };
+document.getElementById("sSnap").onchange = e => { S.snap = parseFloat(e.target.value); };
+
+window.addEventListener("message", ev => {
+  if (!ev.data || ev.data.type !== "streamlit:render") return; const a = ev.data.args || {};
+  if (a.ver !== S.ver) { S.ver = a.ver; S.pts = (a.points || []).map(p => p.slice()); S.door = a.door ? a.door.slice() : null; S.hist = []; }
+  if (a.extent) S.ext = a.extent.slice();
+  draw();
+});
+window.addEventListener("resize", fit);
+send("streamlit:componentReady", {apiVersion: 1}); draw();
+</script></body></html>

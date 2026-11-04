@@ -1,0 +1,33 @@
+{
+ "test_plans": 100,
+ "learned_score_weights": true,
+ "tta": true,
+ "box_iou_true_sizes": 0.5927,
+ "box_iou_default_sizes": 0.5542,
+ "box_iou_no_sizes": 0.5604,
+ "box_iou_oracle_best_of_8": 0.7103,
+ "box_iou_random_sample": 0.572,
+ "sample_diversity_L1": 0.3499,
+ "room_iou_gt_box": 0.9166,
+ "room_iou_e2e": 0.5826,
+ "k=1": {
+  "doors_placed": 0.9676,
+  "auto_doors_per_plan": 1.11,
+  "all_rooms_connected": 0.98,
+  "rooms_present": 0.9988,
+  "plans_with_all_rooms": 0.99,
+  "straightness": 0.9653,
+  "rectangularity": 0.93,
+  "avg_windows": 8.24
+ },
+ "best_of_8": {
+  "doors_placed": 0.9867,
+  "auto_doors_per_plan": 0.98,
+  "all_rooms_connected": 0.98,
+  "rooms_present": 0.9977,
+  "plans_with_all_rooms": 0.98,
+  "straightness": 0.9673,
+  "rectangularity": 0.9392,
+  "avg_windows": 8.3
+ }
+}

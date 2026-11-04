@@ -1,0 +1,98 @@
+\begin{table}[t]
+\caption{Main results, default room sizes. GT = ground-truth layouts through the same builder and metrics (reference ceiling). $n=1630$ test plans, $K=8$, 3 sampling seed(s); mean and 95\% bootstrap CI over plans.}
+\label{tab:main}
+\centering\scriptsize
+\resizebox{\columnwidth}{!}{%
+\begin{tabular}{lccc}
+\toprule
+Metric & Best of $K$ & $K{=}1$ & GT ref. \\
+\midrule
+Room IoU (matched) $\uparrow$ & 0.672 {\scriptsize[0.661, 0.682]} & 0.598 {\scriptsize[0.587, 0.609]} & -- \\
+Stage-1 box IoU $\uparrow$ & 0.657 {\scriptsize[0.646, 0.667]} & 0.586 {\scriptsize[0.575, 0.597]} & -- \\
+Requested doors realised $\uparrow$ & 0.983 {\scriptsize[0.981, 0.986]} & 0.968 {\scriptsize[0.965, 0.971]} & 0.969 {\scriptsize[0.966, 0.973]} \\
+Door-graph distance $\downarrow$ & 0.160 {\scriptsize[0.155, 0.165]} & 0.179 {\scriptsize[0.174, 0.185]} & 0.174 {\scriptsize[0.168, 0.180]} \\
+Adjacency recall $\uparrow$ & 0.937 {\scriptsize[0.933, 0.940]} & 0.917 {\scriptsize[0.913, 0.922]} & 0.861 {\scriptsize[0.855, 0.867]} \\
+Adjacency precision $\uparrow$ & 0.990 {\scriptsize[0.988, 0.991]} & 0.978 {\scriptsize[0.975, 0.980]} & 0.999 {\scriptsize[0.999, 1.000]} \\
+Valid, after repair $\uparrow$ & 0.948 {\scriptsize[0.938, 0.958]} & 0.928 {\scriptsize[0.916, 0.938]} & 0.953 {\scriptsize[0.942, 0.963]} \\
+Valid, before repair $\uparrow$ & 0.160 {\scriptsize[0.142, 0.177]} & 0.143 {\scriptsize[0.127, 0.159]} & 0.175 {\scriptsize[0.156, 0.194]} \\
+Repair-free rate $\uparrow$ & 0.161 {\scriptsize[0.143, 0.179]} & 0.145 {\scriptsize[0.129, 0.162]} & 0.177 {\scriptsize[0.158, 0.195]} \\
+Straightness $\uparrow$ & 0.972 {\scriptsize[0.970, 0.974]} & 0.966 {\scriptsize[0.964, 0.967]} & 0.980 {\scriptsize[0.979, 0.981]} \\
+Footprint coverage $\uparrow$ & 1.000 {\scriptsize[1.000, 1.000]} & 1.000 {\scriptsize[1.000, 1.000]} & 1.000 {\scriptsize[1.000, 1.000]} \\
+Outside footprint $\downarrow$ & 0.083 {\scriptsize[0.081, 0.085]} & 0.081 {\scriptsize[0.079, 0.084]} & 0.089 {\scriptsize[0.086, 0.092]}\\
+\bottomrule
+\end{tabular}}
+\end{table}
+
+\begin{table}[t]
+\caption{Parameter conditioning: requested sizes = the real plan's relative sizes (true) versus type-median sizes (default); best of $K$. $n=1630$ test plans, $K=8$, 3 sampling seed(s); mean and 95\% bootstrap CI over plans.}
+\label{tab:cond}
+\centering\scriptsize
+\resizebox{\columnwidth}{!}{%
+\begin{tabular}{lcc}
+\toprule
+Metric & True sizes & Default sizes \\
+\midrule
+Size MAE (area fraction) $\downarrow$ & 0.014 {\scriptsize[0.013, 0.014]} & 0.019 {\scriptsize[0.019, 0.020]} \\
+Size relative error $\downarrow$ & 0.200 {\scriptsize[0.173, 0.241]} & 0.185 {\scriptsize[0.181, 0.190]} \\
+Size Spearman $\rho$ $\uparrow$ & 0.925 {\scriptsize[0.921, 0.929]} & 0.901 {\scriptsize[0.897, 0.905]} \\
+Room IoU $\uparrow$ & 0.698 {\scriptsize[0.687, 0.709]} & 0.672 {\scriptsize[0.661, 0.682]} \\
+Adjacency recall $\uparrow$ & 0.940 {\scriptsize[0.936, 0.944]} & 0.937 {\scriptsize[0.933, 0.940]}\\
+\bottomrule
+\end{tabular}}
+\end{table}
+
+\begin{table}[t]
+\caption{Comparison with baselines on the same split (true-size scenario). B0: mean box per room type. B1: retrieval of the nearest training plan with the same room set (graph ignored, true sizes given). Paired Wilcoxon with Holm correction; $A_{12}$ = Vargha--Delaney effect size. $n=1630$ test plans, $K=8$, 3 sampling seed(s); mean and 95\% bootstrap CI over plans.}
+\label{tab:base}
+\centering\scriptsize
+\resizebox{\columnwidth}{!}{%
+\begin{tabular}{lccc}
+\toprule
+Metric & Baseline & Ours $K{=}1$ & Ours best of $K$ \\
+\midrule
+Room IoU $\uparrow$ & 0.250 {\scriptsize[0.239, 0.261]} & 0.623 {\scriptsize[0.611, 0.633]} & 0.698 {\scriptsize[0.687, 0.709]} \\
+Adjacency recall $\uparrow$ & 0.611 {\scriptsize[0.604, 0.619]} & 0.921 {\scriptsize[0.918, 0.926]} & 0.940 {\scriptsize[0.936, 0.944]} \\
+Size MAE $\downarrow$ & 0.031 {\scriptsize[0.030, 0.032]} & 0.016 {\scriptsize[0.016, 0.017]} & 0.014 {\scriptsize[0.013, 0.014]} \\
+Stage-1 box IoU (B0 vs.\ ours) $\uparrow$ & 0.086 {\scriptsize[0.084, 0.087]} & 0.612 {\scriptsize[0.602, 0.622]} & 0.685 {\scriptsize[0.675, 0.695]} \\
+Paired diff. vs.\ B1, room iou & +0.448 {\scriptsize[+0.435, +0.462]} & Holm $p=1.4e-240$ & $A_{12}=0.89$ \\
+Paired diff. vs.\ B1, adj recall & +0.329 {\scriptsize[+0.321, +0.336]} & Holm $p=2.0e-259$ & $A_{12}=0.96$ \\
+Paired diff. vs.\ B1, size mae & -0.017 {\scriptsize[-0.018, -0.016]} & Holm $p=8.2e-234$ & $A_{12}=0.13$\\
+\bottomrule
+\end{tabular}}
+\end{table}
+
+\begin{table}[t]
+\caption{Diversity, novelty and efficiency. $n=1630$ test plans, $K=8$, 3 sampling seed(s); mean and 95\% bootstrap CI over plans.}
+\label{tab:eff}
+\centering\scriptsize
+\resizebox{\columnwidth}{!}{%
+\begin{tabular}{lc}
+\toprule
+Quantity & Value \\
+\midrule
+Diversity (mean pairwise $1-$IoU of the $K$ candidates) & 0.299 {\scriptsize[0.290, 0.310]} \\
+Novelty: nearest-neighbour type-map IoU to training plans & 0.490 {\scriptsize[0.482, 0.499]} \\
+Parameters (BoxNet / RefineNet), millions & 10.20 / 7.77 \\
+Latency per plan, $K=1$ (p50 / p95), s & 0.13 / 0.15 \\
+Latency per plan, $K=8$ (p50 / p95), s & 0.61 / 0.76 \\
+Peak GPU memory, MB (NVIDIA GeForce RTX 5050 Laptop GPU) & 278\\
+\bottomrule
+\end{tabular}}
+\end{table}
+
+\begin{table}[t]
+\caption{Ablations (room IoU, default sizes). Last column: full minus variant, paired Wilcoxon. $n=1630$ test plans, $K=8$, 3 sampling seed(s); mean and 95\% bootstrap CI over plans.}
+\label{tab:abl}
+\centering\scriptsize
+\resizebox{\columnwidth}{!}{%
+\begin{tabular}{lccc}
+\toprule
+Variant & Best of $K$ & $K{=}1$ & Full $-$ variant \\
+\midrule
+Full model & 0.672 {\scriptsize[0.661, 0.682]} & 0.598 {\scriptsize[0.587, 0.609]} & -- \\
+no multi hypothesis & 0.638 {\scriptsize[0.626, 0.650]} & 0.633 {\scriptsize[0.622, 0.645]} & +0.033 ($p=2.9e-19$) \\
+no tiling loss & 0.662 {\scriptsize[0.650, 0.673]} & 0.589 {\scriptsize[0.576, 0.602]} & +0.010 ($p=7.0e-04$) \\
+no tta & 0.672 {\scriptsize[0.660, 0.684]} & 0.598 {\scriptsize[0.584, 0.611]} & +0.000 ($p=9.9e-01$)\\
+\bottomrule
+\end{tabular}}
+\end{table}
