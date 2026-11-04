@@ -351,6 +351,9 @@ def line_fig(path, rename, title, ycol_hint, lower_better=False):
 init()
 with st.sidebar:
     st.header("⚙️ Settings")
+    # Open the actual HTML visualizer in a new tab
+    st.link_button("🔗👉 How it works?", "/app/static/pcfpg_visualizer.html", use_container_width=True)
+    
     box = st.text_input("Stage 1 weights", str(ROOT / "checkpoints" / "box_best.pt"), help="Trained 'BoxNet' file (places one box per room). Created by train_box.py.")
     ref = st.text_input("Stage 2 weights", str(ROOT / "checkpoints" / "refine_best.pt"), help="Trained 'RefineNet' file (turns boxes into clean rooms). Created by train_refine.py.")
     files_ok = Path(box).exists() and Path(ref).exists()
@@ -362,7 +365,7 @@ with st.sidebar:
     st.button("🚀 Generate floor plans", type="primary", key="gen_side", on_click=lambda: ss.__setitem__("run_req", True), help="Same as the button in step ③. The checklist in step ③ must be green.")
     st.caption("Boundary units are **metres**. Everything here builds the same JSON spec you could write by hand (see step ③).")
     st.button("↺ Reset everything", on_click=cb_reset, help="Clears the boundary, rooms, connections and results and starts again from the 2 BHK example.")
-
+    
 st.markdown("""<div class="hero"><h1>🏠 Floor-plan Studio</h1><p>Sketch the outline, drop in rooms, wire them together — the AI designs the plan and shows it in 2D and 3D.</p>
 <div class="steps"><span>① Draw boundary</span><span>② Drop & connect rooms</span><span>③ Generate</span><span>④ Compare & export</span></div></div>""", unsafe_allow_html=True)
 r1 = st.columns([1.6] + [1] * len(TEMPLATES))
