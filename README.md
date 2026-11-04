@@ -715,4 +715,3 @@ The dataset is maintained by its original authors. PCFPG is a separate project t
 - Rezatofighi, H. et al. **Generalized Intersection over Union.** CVPR, 2019.
 - Nauata, N. et al. **House-GAN: Relational Generative Adversarial Networks for Graph-Constrained House Layout Generation.** ECCV, 2020.
 
----
