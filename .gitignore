@@ -45,14 +45,14 @@ htmlcov/
 # ==========================================
 # MODEL CHECKPOINTS
 # ==========================================
-checkpoints/*
-!checkpoints/.gitkeep
-!checkpoints/score_weights.json
+# checkpoints/*
+# !checkpoints/.gitkeep
+# !checkpoints/score_weights.json
 
-*.pt
-*.pth
-*.ckpt
-*.safetensors
+# *.pt
+# *.pth
+# *.ckpt
+# *.safetensors
 
 
 # ==========================================
@@ -128,4 +128,4 @@ paper/
 docs/
 main.tex.streamlit/secrets.toml
 main.tex 
-
+/project_documentation 
