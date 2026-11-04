@@ -1,0 +1,24 @@
+
+{
+  "name": "moderate_2bhk",
+  "boundary": [[0, 0], [12, 0], [12, 9], [0, 9]],
+  "front_door": [6, 0],
+  "rooms": [
+    {"id": "living", "type": "living"},
+    {"id": "kitchen", "type": "kitchen"},
+    {"id": "bed1", "type": "bedroom"},
+    {"id": "bed2", "type": "bedroom"},
+    {"id": "bath1", "type": "bathroom"},
+    {"id": "bath2", "type": "bathroom"},
+    {"id": "balcony", "type": "balcony"}
+  ],
+  "connections": [
+    ["living", "kitchen"],
+    ["living", "bed1"],
+    ["living", "bed2"],
+    ["bed1", "bath1"],
+    ["living", "bath2"],
+    ["living", "balcony"]
+  ],
+  "entrance": "living"
+}

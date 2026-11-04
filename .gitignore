@@ -1,0 +1,53 @@
+﻿# AI assistant files - never on GitHub
+CLAUDE.md
+.claude/
+
+# Editor
+.vscode/
+.idea/
+
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+
+# Checkpoints & large binaries (GitHub rejects any single file over 100 MB)
+checkpoints/*
+!checkpoints/.gitkeep
+!checkpoints/score_weights.json
+*.pt
+*.pth
+*.ckpt
+
+# Generated outputs (regenerable)
+outputs/*
+!outputs/.gitkeep
+
+# Processed data caches (regenerable via prepare_data.py)
+data/*.npz
+
+# Run logs - keep only key result files
+logs/*
+!logs/.gitkeep
+!logs/bench.json
+!logs/eval_test.json
+!logs/bench_full_main.json
+!logs/WORKLOG.md
+
+# Archive folder (old code, kept locally only)
+_archive/
+trash/
+legacy_v2/
+
+# Diagnostic files from today
+project_structure.txt
+Get-ProjectStructure.ps1
+Setup-GitHub.ps1
+
+# OS junk
+Thumbs.db
+.DS_Store
+*.log
+*.tmp
+*.bak

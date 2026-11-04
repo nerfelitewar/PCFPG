@@ -1,0 +1,146 @@
+<!DOCTYPE html>
+<html><head><meta charset="utf-8"><title>Floor plan 3D</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<style>
+html,body{margin:0;height:100%;overflow:hidden;background:#e9edf3;font-family:system-ui,sans-serif}
+canvas{display:block}
+.panel{position:fixed;background:#fffd;border-radius:10px;padding:8px 12px;font-size:13px;color:#223;box-shadow:0 1px 6px #0002}
+#info{top:10px;left:12px}
+#legend{top:10px;right:12px}
+#legend div{display:flex;align-items:center;gap:7px;margin:3px 0}
+#legend i{width:14px;height:14px;border-radius:3px;display:inline-block;border:1px solid #0003}
+button{cursor:pointer;border:1px solid #0003;background:#fff;border-radius:6px;padding:3px 9px;margin-left:6px}
+</style></head>
+<body>
+<div id="info" class="panel"></div>
+<div id="legend" class="panel"></div>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script>
+const PLAN = __PLAN_JSON__;
+const N = PLAN.size, SC = N / 128, WALL_H = 26 * SC;   // ~2.7 m (1 m ≈ 10 px at a 128 px canvas)
+const NAMES = ["Outside","Wall","Living","Bedroom","Bathroom","Kitchen","Balcony","Storage","Stair","Door","Window","Entrance"];
+const rgb = c => `rgb(${c[0]},${c[1]},${c[2]})`;
+const info = document.getElementById("info");
+let labelsOn = true;
+info.innerHTML = `<b>${PLAN.name}</b> — drag: rotate · wheel: zoom · shift+drag: pan <button id="tg">Labels: on</button>`;
+document.getElementById("legend").innerHTML = [2,3,4,5,6,7,8,9,10,11].map(i => `<div><i style="background:${i === 6 ? "rgb(196,156,110)" : rgb(PLAN.palette[i])}"></i>${NAMES[i]}</div>`).join("");
+
+const scene = new THREE.Scene(); scene.background = new THREE.Color(0xe9edf3);
+const camera = new THREE.PerspectiveCamera(45, innerWidth / innerHeight, 1, 6000);
+const renderer = new THREE.WebGLRenderer({antialias: true}); renderer.setSize(innerWidth, innerHeight);
+renderer.setPixelRatio(devicePixelRatio); document.body.appendChild(renderer.domElement);
+scene.add(new THREE.AmbientLight(0xffffff, 0.8));
+const sun = new THREE.DirectionalLight(0xffffff, 0.55); sun.position.set(80, 200, 60); scene.add(sun);
+
+// floor: true room colours (unlit), "outside" transparent
+const cv = document.createElement("canvas"); cv.width = cv.height = N; const cx = cv.getContext("2d");
+for (let y = 0; y < N; y++) for (let x = 0; x < N; x++) {
+  let l = PLAN.grid[y][x]; if (l === 1 || l === 10) l = 2;        // under walls/windows: neutral floor
+  if (l === 0) continue;
+  if (l === 6) { const sh = (Math.floor(y / (2 * SC)) % 2) ? -14 : 0; cx.fillStyle = `rgb(${196 + sh},${156 + sh},${110 + sh})`; }   // wooden deck planks
+  else cx.fillStyle = rgb(PLAN.palette[l]);
+  cx.fillRect(x, y, 1, 1);
+}
+const tex = new THREE.CanvasTexture(cv); tex.magFilter = THREE.NearestFilter; tex.minFilter = THREE.NearestFilter;
+const floor = new THREE.Mesh(new THREE.PlaneGeometry(N, N), new THREE.MeshBasicMaterial({map: tex, transparent: true}));
+floor.rotation.x = -Math.PI / 2; scene.add(floor);
+
+function boxes(list, y0, h, mat) {
+  for (const [x, y, w, d] of list) {
+    const m = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), mat);
+    m.position.set(x + w / 2 - N / 2, y0 + h / 2, y + d / 2 - N / 2); scene.add(m);
+  }
+}
+const wallMat = new THREE.MeshLambertMaterial({color: 0xf2efe8});
+const glass = new THREE.MeshLambertMaterial({color: 0x88c8ff, transparent: true, opacity: 0.45});
+boxes(PLAN.walls, 0, WALL_H, wallMat);
+boxes(PLAN.windows, 0, 9 * SC, wallMat); boxes(PLAN.windows, 9 * SC, 12 * SC, glass); boxes(PLAN.windows, 21 * SC, WALL_H - 21 * SC, wallMat);
+boxes(PLAN.doors, 22 * SC, WALL_H - 22 * SC, wallMat);      // wall above door openings (the opening itself stays open)
+
+
+// ---- balcony: a balcony has no wall towards the outside, so give it a real railing, deck, plants and a small table ----
+function rectsOf(mask) {                                   // greedy merge of a boolean grid into [x, y, w, h] rectangles
+  const H = mask.length, W = mask[0].length, active = new Map(), out = [];
+  for (let y = 0; y <= H; y++) {
+    const runs = new Set();
+    if (y < H) { let x = 0; while (x < W) { if (mask[y][x]) { const x0 = x; while (x < W && mask[y][x]) x++; runs.add(x0 + "," + x); } else x++; } }
+    for (const k of [...active.keys()]) if (!runs.has(k)) { const y0 = active.get(k); active.delete(k); const [a, b] = k.split(",").map(Number); out.push([a, y0, b - a, y - y0]); }
+    for (const k of runs) if (!active.has(k)) active.set(k, y);
+  }
+  return out;
+}
+(function balcony() {
+  const G = PLAN.grid, B = 6;
+  const isB = (x, y) => x >= 0 && y >= 0 && x < N && y < N && G[y][x] === B;
+  const isOut = (x, y) => x < 0 || y < 0 || x >= N || y >= N || G[y][x] === 0;
+  const near = (x, y, r) => { for (let j = -r; j <= r; j++) for (let i = -r; i <= r; i++) if (isOut(x + i, y + j)) return true; return false; };
+  const mask = []; let any = false;
+  for (let y = 0; y < N; y++) { const row = new Array(N).fill(false); for (let x = 0; x < N; x++) if (isB(x, y) && near(x, y, 2)) { row[x] = true; any = true; } mask.push(row); }
+  if (!any) return;
+  const parapet = new THREE.MeshLambertMaterial({color: 0xe9e6df}), rail = new THREE.MeshLambertMaterial({color: 0x4b5563});
+  const gl = new THREE.MeshLambertMaterial({color: 0xa8d8ff, transparent: true, opacity: 0.35});
+  const R = rectsOf(mask);
+  boxes(R, 0, 4 * SC, parapet); boxes(R, 4 * SC, 6 * SC, gl); boxes(R, 10 * SC, 0.7 * SC, rail);       // 0.4 m wall + 0.6 m glass + handrail
+  // distance to the nearest non-balcony pixel (two-pass city-block transform)
+  const D = Array.from({length: N}, () => new Array(N).fill(0));
+  for (let y = 0; y < N; y++) for (let x = 0; x < N; x++) if (isB(x, y)) D[y][x] = Math.min((isB(x, y - 1) ? D[y - 1][x] : 0), (isB(x - 1, y) ? D[y][x - 1] : 0)) + 1;
+  for (let y = N - 1; y >= 0; y--) for (let x = N - 1; x >= 0; x--) if (isB(x, y)) D[y][x] = Math.min(D[y][x], (isB(x, y + 1) ? D[y + 1][x] : 0) + 1, (isB(x + 1, y) ? D[y][x + 1] : 0) + 1);
+  const seen = Array.from({length: N}, () => new Array(N).fill(false));
+  const wx = x => x - N / 2 + 0.5, wz = y => y - N / 2 + 0.5;
+  const mat = c => new THREE.MeshLambertMaterial({color: c});
+  const potM = mat(0xb5653a), leafM = mat(0x3f8f4a), leaf2 = mat(0x56a65e), woodM = mat(0x8b6b4a), stoolM = mat(0x6b7280);
+  const add = (geo, m, x, y, z) => { const o = new THREE.Mesh(geo, m); o.position.set(x, y, z); scene.add(o); return o; };
+  const plant = (x, y) => { add(new THREE.CylinderGeometry(2.2 * SC, 1.7 * SC, 4 * SC, 10), potM, wx(x), 2 * SC, wz(y));
+    add(new THREE.SphereGeometry(3.2 * SC, 10, 8), leafM, wx(x), 6.4 * SC, wz(y)); add(new THREE.SphereGeometry(2.2 * SC, 10, 8), leaf2, wx(x) + SC, 8.4 * SC, wz(y) - SC); };
+  for (let y0 = 0; y0 < N; y0++) for (let x0 = 0; x0 < N; x0++) {
+    if (!isB(x0, y0) || seen[y0][x0]) continue;
+    const reg = [], st = [[x0, y0]]; seen[y0][x0] = true;
+    while (st.length) { const [x, y] = st.pop(); reg.push([x, y]); for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) { const a = x + dx, b = y + dy; if (isB(a, b) && !seen[b][a]) { seen[b][a] = true; st.push([a, b]); } } }
+    if (reg.length < 60 * SC * SC / 4) continue;
+    let c = reg[0]; for (const p of reg) if (D[p[1]][p[0]] > D[c[1]][c[0]]) c = p;
+    let table = null;
+    if (D[c[1]][c[0]] >= 7 * SC) {                                                       // round table with two stools
+      table = c; add(new THREE.CylinderGeometry(0.5 * SC, 0.5 * SC, 7 * SC, 8), woodM, wx(c[0]), 3.5 * SC, wz(c[1]));
+      add(new THREE.CylinderGeometry(4 * SC, 4 * SC, 0.6 * SC, 18), woodM, wx(c[0]), 7.3 * SC, wz(c[1]));
+      for (const sgn of [-1, 1]) { const sx = c[0] + sgn * 6 * SC; if (isB(sx, c[1])) add(new THREE.CylinderGeometry(1.6 * SC, 1.6 * SC, 4.5 * SC, 12), stoolM, wx(sx), 2.25 * SC, wz(c[1])); }
+    }
+    const cand = reg.filter(p => D[p[1]][p[0]] >= 3 * SC && D[p[1]][p[0]] <= 5 * SC && (!table || Math.hypot(p[0] - table[0], p[1] - table[1]) > 9 * SC));
+    if (cand.length) {
+      const a = cand.reduce((m, p) => p[0] + p[1] < m[0] + m[1] ? p : m), b = cand.reduce((m, p) => p[0] + p[1] > m[0] + m[1] ? p : m);
+      plant(a[0], a[1]); if (Math.hypot(a[0] - b[0], a[1] - b[1]) > 12 * SC) plant(b[0], b[1]);
+    }
+  }
+})();
+
+// room labels (sprites that always face the camera)
+const labelGroup = new THREE.Group(); scene.add(labelGroup);
+for (const L of (PLAN.labels || [])) {
+  const c = document.createElement("canvas"); c.width = 256; c.height = 72; const g = c.getContext("2d");
+  const txt = L.name.replace(/_/g, " "); g.font = "bold 34px system-ui,sans-serif"; const w = Math.min(244, g.measureText(txt).width + 28);
+  g.fillStyle = "rgba(255,255,255,0.92)"; g.strokeStyle = "rgba(0,0,0,0.35)"; g.lineWidth = 3;
+  g.beginPath(); if (g.roundRect) g.roundRect((256 - w) / 2, 8, w, 56, 14); else g.rect((256 - w) / 2, 8, w, 56); g.fill(); g.stroke();
+  g.fillStyle = "#1b2433"; g.textAlign = "center"; g.textBaseline = "middle"; g.fillText(txt, 128, 37, 230);
+  const sp = new THREE.Sprite(new THREE.SpriteMaterial({map: new THREE.CanvasTexture(c), depthTest: false, transparent: true}));
+  sp.scale.set(26 * SC, 7.3 * SC, 1); sp.position.set(L.x - N / 2, 3 * SC, L.y - N / 2); sp.renderOrder = 10; labelGroup.add(sp);
+}
+document.getElementById("tg").onclick = e => { labelsOn = !labelsOn; labelGroup.visible = labelsOn; e.target.textContent = "Labels: " + (labelsOn ? "on" : "off"); };
+
+// minimal orbit controls
+let th = 0.8, ph = 1.0, r = 230 * SC, tgt = new THREE.Vector3(0, 0, 0), drag = null;
+function upd() {
+  camera.position.set(tgt.x + r * Math.sin(ph) * Math.sin(th), tgt.y + r * Math.cos(ph), tgt.z + r * Math.sin(ph) * Math.cos(th));
+  camera.lookAt(tgt);
+}
+renderer.domElement.addEventListener("pointerdown", e => { drag = {x: e.clientX, y: e.clientY, pan: e.shiftKey || e.button === 2}; });
+addEventListener("pointerup", () => drag = null);
+addEventListener("pointermove", e => {
+  if (!drag) return; const dx = e.clientX - drag.x, dy = e.clientY - drag.y; drag.x = e.clientX; drag.y = e.clientY;
+  if (drag.pan) { tgt.x -= dx * r * 0.0015 * Math.cos(th); tgt.z += dx * r * 0.0015 * Math.sin(th); tgt.x -= dy * r * 0.0015 * Math.sin(th); tgt.z -= dy * r * 0.0015 * Math.cos(th); }
+  else { th -= dx * 0.008; ph = Math.min(1.5, Math.max(0.1, ph - dy * 0.008)); }
+  upd();
+});
+addEventListener("wheel", e => { r = Math.min(700 * SC, Math.max(40 * SC, r * (1 + Math.sign(e.deltaY) * 0.08))); upd(); }, {passive: true});
+renderer.domElement.addEventListener("contextmenu", e => e.preventDefault());
+addEventListener("resize", () => { camera.aspect = innerWidth / innerHeight; camera.updateProjectionMatrix(); renderer.setSize(innerWidth, innerHeight); });
+upd(); (function loop() { requestAnimationFrame(loop); renderer.render(scene, camera); })();
+</script></body></html>

@@ -1,0 +1,7 @@
+{"name": "wide_3bhk",
+ "boundary": [[0,0],[16,0],[16,8],[0,8]],
+ "front_door": [8, 8],
+ "rooms": {"living": 1, "kitchen": 1, "bedroom": 3, "bathroom": 3, "balcony": 2, "storage": 1},
+ "connections": [["living","kitchen"],["living","bedroom_1"],["living","bedroom_2"],["living","bedroom_3"],
+                 ["bedroom_1","bathroom_1"],["bedroom_2","bathroom_2"],["living","bathroom_3"],
+                 ["living","balcony_1"],["bedroom_1","balcony_2"],["kitchen","storage"]]}
