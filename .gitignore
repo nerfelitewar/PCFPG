@@ -1,56 +1,130 @@
-﻿# AI assistant files - never on GitHub
+﻿# ==========================================
+# AI ASSISTANT FILES
+# ==========================================
 CLAUDE.md
 .claude/
+Claude/
 
-# Editor
+
+# ==========================================
+# EDITORS
+# ==========================================
 .vscode/
 .idea/
 
-# Python
+
+# ==========================================
+# SECRETS
+# ==========================================
+.env
+.env.*
+!.env.example
+
+.streamlit/secrets.toml
+
+
+# ==========================================
+# PYTHON
+# ==========================================
 __pycache__/
 *.py[cod]
+
 .venv/
 venv/
+env/
+ENV/
 
-# Checkpoints & large binaries (GitHub rejects any single file over 100 MB)
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+.coverage
+htmlcov/
+
+
+# ==========================================
+# MODEL CHECKPOINTS
+# ==========================================
 checkpoints/*
 !checkpoints/.gitkeep
 !checkpoints/score_weights.json
+
 *.pt
 *.pth
 *.ckpt
+*.safetensors
 
-# Generated outputs (regenerable)
+
+# ==========================================
+# GENERATED OUTPUTS
+# ==========================================
 outputs/*
 !outputs/.gitkeep
 
-# Processed data caches (regenerable via prepare_data.py)
-data/*.npz
 
-# Run logs - keep only key result files
+# ==========================================
+# PROCESSED DATA CACHES
+# ==========================================
+data/*.npz
+data/**/*.npz
+
+
+# ==========================================
+# TRAINING & EVALUATION LOGS
+# ==========================================
 logs/*
 !logs/.gitkeep
+
+# Important research results
 !logs/bench.json
 !logs/eval_test.json
 !logs/bench_full_main.json
 !logs/WORKLOG.md
 
-# Archive folder (old code, kept locally only)
+# Required by the application dashboard
+!logs/box_log.csv
+!logs/refine_log.csv
+!logs/calibration.json
+
+
+# ==========================================
+# ARCHIVE / OLD CODE
+# ==========================================
 _archive/
 trash/
 legacy_v2/
 
-# Diagnostic files from today
+
+# ==========================================
+# DIAGNOSTIC FILES
+# ==========================================
 project_structure.txt
 Get-ProjectStructure.ps1
 Setup-GitHub.ps1
 
-# OS junk
+
+# ==========================================
+# OS JUNK
+# ==========================================
 Thumbs.db
 .DS_Store
+Desktop.ini
+
 *.log
 *.tmp
 *.bak
-Claude/
+
+
+# ==========================================
+# JUPYTER
+# ==========================================
 .ipynb_checkpoints/
-.pytest_cache/
+
+
+# ==========================================
+# LOCAL-ONLY RESEARCH DOCUMENTS
+# ==========================================
+PCFPG_research_article_IEEE.docx
+paper/
+docs/
+main.tex.streamlit/secrets.toml
